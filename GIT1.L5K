@@ -1,0 +1,1227 @@
+﻿(*********************************************
+
+  Import-Export
+  Version   := RSLogix 5000 v19.01
+  Owner     := Microsoft, Microsoft
+  Exported  := Mon Mar 06 13:45:24 2017
+
+  Note:  File encoded in UTF-8.  Only edit file in a program 
+         which supports UTF-8 (like Notepad, not Wordpad).
+
+**********************************************)
+IE_VER := 2.10;
+
+CONTROLLER Kinematics_Cartesian_Rotate_Translate (Description := "Sample for Rotation & Translation of Cartesian axes(frame) using MCT instruction.",
+                                                  ProcessorType := "1756-L63",
+                                                  Major := 19,
+                                                  TimeSlice := 20,
+                                                  ShareUnusedTimeSlice := 1,
+                                                  CommPath := "Laptop_toMyrack\0",
+                                                  RedundancyEnabled := 0,
+                                                  KeepTestEditsOnSwitchOver := 0,
+                                                  DataTablePadPercentage := 50,
+                                                  SecurityCode := 0,
+                                                  SFCExecutionControl := "CurrentActive",
+                                                  SFCRestartPosition := "MostRecent",
+                                                  SFCLastScan := "DontScan",
+                                                  SerialNumber := 16#002e_dc65,
+                                                  MatchProjectToController := No,
+                                                  CanUseRPIFromProducer := No,
+                                                  InhibitAutomaticFirmwareUpdate := 0)
+	MODULE Local (Parent := "Local",
+	              ParentModPortId := 1,
+	              CatalogNumber := "1756-L63",
+	              Vendor := 1,
+	              ProductType := 14,
+	              ProductCode := 56,
+	              Major := 19,
+	              Minor := 11,
+	              PortLabel := "RxBACKPLANE",
+	              ChassisSize := 10,
+	              Slot := 0,
+	              Mode := 2#0000_0000_0000_0000,
+	              CompatibleModule := 0,
+	              KeyMask := 2#0000_0000_0001_1111)
+	END_MODULE
+
+	TAG
+		Begin_Application : BOOL (RADIX := Decimal) := 0;
+		cs_Source OF CS_Cartesian_Base_Frame ;
+		cs_Target OF CS_Cartesian_Transformed_Frame ;
+		Go_ToStartPosition : BOOL (RADIX := Decimal) := 0;
+		mct1 : MOTION_INSTRUCTION  := [0,0,0,0,0,0,0,0,0];
+		mc_initialposition : MOTION_INSTRUCTION[3]  := [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]];
+		mc_transformStop : MOTION_INSTRUCTION  := [0,0,0,0,0,0,0,0,0];
+		mc_transformStop2 : MOTION_INSTRUCTION  := [0,0,0,0,0,0,0,0,0];
+		orient : REAL[3] (Description := "Rotation Angle a-round [x,y,z]",
+		            RADIX := Float) := [0.00000000e+000,0.00000000e+000,0.00000000e+000];
+		save_Orient : REAL (RADIX := Float) := 0.00000000e+000;
+		Transform_Start : BOOL (RADIX := Decimal) := 0;
+		Transform_Start_with_Orientation : BOOL (RADIX := Decimal) := 0;
+		Transform_Stop : BOOL (RADIX := Decimal) := 0;
+		Transform_Stop1 : BOOL (RADIX := Decimal) := 0;
+		Transform_Stop2 : BOOL (RADIX := Decimal) := 0;
+		trs : REAL[3] (RADIX := Float) := [0.00000000e+000,0.00000000e+000,0.00000000e+000];
+		Motion_Group : MOTION_GROUP (GroupType := Warning Enabled,
+		                          CoarseUpdatePeriod := 5000,
+		                          PhaseShift := 0,
+		                          GeneralFaultType := Non Major Fault,
+		                          AutoTagUpdate := Enabled);
+		X : AXIS_VIRTUAL (MotionGroup := "Motion_Group",
+		        ConversionConstant := 100000.0,
+		        OutputCamExecutionTargets := 0,
+		        PositionUnits := "Position Units",
+		        AverageVelocityTimebase := 0.25,
+		        RotaryAxis := Linear,
+		        PositionUnwind := 8000,
+		        HomeMode := Active,
+		        HomeDirection := Bi-directional Forward,
+		        HomeSequence := Immediate,
+		        HomeConfigurationBits := 16#0000_0000,
+		        HomePosition := 0.0,
+		        HomeOffset := 0.0,
+		        MaximumSpeed := 10.0,
+		        MaximumAcceleration := 100.0,
+		        MaximumDeceleration := 100.0,
+		        ProgrammedStopMode := Fast Stop,
+		        MasterInputConfigurationBits := 1,
+		        MasterPositionFilterBandwidth := 0.1,
+		        MaximumAccelerationJerk := 3000.0,
+		        MaximumDecelerationJerk := 3878.0488,
+		        DynamicsConfigurationBits := 3);
+		X_tr_physical : AXIS_VIRTUAL (MotionGroup := "Motion_Group",
+		                    ConversionConstant := 100000.0,
+		                    OutputCamExecutionTargets := 0,
+		                    PositionUnits := "Position Units",
+		                    AverageVelocityTimebase := 0.25,
+		                    RotaryAxis := Linear,
+		                    PositionUnwind := 8000,
+		                    HomeMode := Active,
+		                    HomeDirection := Bi-directional Forward,
+		                    HomeSequence := Immediate,
+		                    HomeConfigurationBits := 16#0000_0000,
+		                    HomePosition := 0.0,
+		                    HomeOffset := 0.0,
+		                    MaximumSpeed := 10.0,
+		                    MaximumAcceleration := 100.0,
+		                    MaximumDeceleration := 100.0,
+		                    ProgrammedStopMode := Fast Stop,
+		                    MasterInputConfigurationBits := 1,
+		                    MasterPositionFilterBandwidth := 0.1,
+		                    MaximumAccelerationJerk := 3000.0,
+		                    MaximumDecelerationJerk := 3878.0488,
+		                    DynamicsConfigurationBits := 3);
+		Y : AXIS_VIRTUAL (MotionGroup := "Motion_Group",
+		        ConversionConstant := 100000.0,
+		        OutputCamExecutionTargets := 0,
+		        PositionUnits := "Position Units",
+		        AverageVelocityTimebase := 0.25,
+		        RotaryAxis := Linear,
+		        PositionUnwind := 8000,
+		        HomeMode := Active,
+		        HomeDirection := Bi-directional Forward,
+		        HomeSequence := Immediate,
+		        HomeConfigurationBits := 16#0000_0000,
+		        HomePosition := 0.0,
+		        HomeOffset := 0.0,
+		        MaximumSpeed := 10.0,
+		        MaximumAcceleration := 100.0,
+		        MaximumDeceleration := 100.0,
+		        ProgrammedStopMode := Fast Stop,
+		        MasterInputConfigurationBits := 1,
+		        MasterPositionFilterBandwidth := 0.1,
+		        MaximumAccelerationJerk := 3081.6326,
+		        MaximumDecelerationJerk := 3878.0488,
+		        DynamicsConfigurationBits := 3);
+		Y_tr_physical : AXIS_VIRTUAL (MotionGroup := "Motion_Group",
+		                    ConversionConstant := 100000.0,
+		                    OutputCamExecutionTargets := 0,
+		                    PositionUnits := "Position Units",
+		                    AverageVelocityTimebase := 0.25,
+		                    RotaryAxis := Linear,
+		                    PositionUnwind := 8000,
+		                    HomeMode := Active,
+		                    HomeDirection := Bi-directional Forward,
+		                    HomeSequence := Immediate,
+		                    HomeConfigurationBits := 16#0000_0000,
+		                    HomePosition := 0.0,
+		                    HomeOffset := 0.0,
+		                    MaximumSpeed := 10.0,
+		                    MaximumAcceleration := 100.0,
+		                    MaximumDeceleration := 100.0,
+		                    ProgrammedStopMode := Fast Stop,
+		                    MasterInputConfigurationBits := 1,
+		                    MasterPositionFilterBandwidth := 0.1,
+		                    MaximumAccelerationJerk := 3081.6326,
+		                    MaximumDecelerationJerk := 3878.0488,
+		                    DynamicsConfigurationBits := 3);
+		Z : AXIS_VIRTUAL (MotionGroup := "Motion_Group",
+		        ConversionConstant := 100000.0,
+		        OutputCamExecutionTargets := 0,
+		        PositionUnits := "Position Units",
+		        AverageVelocityTimebase := 0.25,
+		        RotaryAxis := Linear,
+		        PositionUnwind := 8000,
+		        HomeMode := Active,
+		        HomeDirection := Bi-directional Forward,
+		        HomeSequence := Immediate,
+		        HomeConfigurationBits := 16#0000_0000,
+		        HomePosition := 0.0,
+		        HomeOffset := 0.0,
+		        MaximumSpeed := 10.0,
+		        MaximumAcceleration := 100.0,
+		        MaximumDeceleration := 100.0,
+		        ProgrammedStopMode := Fast Stop,
+		        MasterInputConfigurationBits := 1,
+		        MasterPositionFilterBandwidth := 0.1,
+		        MaximumAccelerationJerk := 2921.5686,
+		        MaximumDecelerationJerk := 2921.5686,
+		        DynamicsConfigurationBits := 3);
+		Z_tr_physical : AXIS_VIRTUAL (MotionGroup := "Motion_Group",
+		                    ConversionConstant := 100000.0,
+		                    OutputCamExecutionTargets := 0,
+		                    PositionUnits := "Position Units",
+		                    AverageVelocityTimebase := 0.25,
+		                    RotaryAxis := Linear,
+		                    PositionUnwind := 8000,
+		                    HomeMode := Active,
+		                    HomeDirection := Bi-directional Forward,
+		                    HomeSequence := Immediate,
+		                    HomeConfigurationBits := 16#0000_0000,
+		                    HomePosition := 0.0,
+		                    HomeOffset := 0.0,
+		                    MaximumSpeed := 10.0,
+		                    MaximumAcceleration := 100.0,
+		                    MaximumDeceleration := 100.0,
+		                    ProgrammedStopMode := Fast Stop,
+		                    MasterInputConfigurationBits := 1,
+		                    MasterPositionFilterBandwidth := 0.1,
+		                    MaximumAccelerationJerk := 2921.5686,
+		                    MaximumDecelerationJerk := 2921.5686,
+		                    DynamicsConfigurationBits := 3);
+		CS_Cartesian_Base_Frame : COORDINATE_SYSTEM (Description := "BASE Cartesian Reference Frame",
+		                                          MotionGroupInstance := "Motion_Group",
+		                                          SystemType := Cartesian,
+		                                          Dimension := 3,
+		                                          Axes := "X Y Z",
+		                                          CoordinationMode := "Primary Primary Primary",
+		                                          CoordinationUnits := "Inches",
+		                                          ConversionRatioNumerator := "1.0 1.0 1.0",
+		                                          ConversionRatioDenominator := "1 1 1",
+		                                          CoordinateSystemAutoTagUpdate := Enabled,
+		                                          MaximumSpeed := 10.0,
+		                                          MaximumAcceleration := 100.0,
+		                                          MaximumDeceleration := 100.0,
+		                                          ActualPositionTolerance := 0.1,
+		                                          CommandPositionTolerance := 0.1,
+		                                          TransformDimension := 3,
+		                                          JointRatioNumerator := "1.0 1.0 1.0",
+		                                          JointRatioDenominator := "1 1 1",
+		                                          LinkLength1 := 0.0,
+		                                          LinkLength2 := 0.0,
+		                                          ZeroAngleOffset1 := 0.0,
+		                                          ZeroAngleOffset2 := 0.0,
+		                                          ZeroAngleOffset3 := 0.0,
+		                                          BaseOffset1 := 0.0,
+		                                          BaseOffset2 := 0.0,
+		                                          BaseOffset3 := 0.0,
+		                                          EndEffectorOffset1 := 0.0,
+		                                          EndEffectorOffset2 := 0.0,
+		                                          EndEffectorOffset3 := 0.0,
+		                                          DynamicsConfigurationBits := 7,
+		                                          MaximumAccelerationJerk := 1000.0,
+		                                          MaximumDecelerationJerk := 1000.0);
+		CS_Cartesian_Transformed_Frame : COORDINATE_SYSTEM (Description := "TRANSFORMED Cartesian Reference Frame$NTranslate & Rotate",
+		                                                 MotionGroupInstance := "Motion_Group",
+		                                                 SystemType := Cartesian,
+		                                                 Dimension := 3,
+		                                                 Axes := "X_tr_physical Y_tr_physical Z_tr_physical",
+		                                                 CoordinationMode := "Primary Primary Primary",
+		                                                 CoordinationUnits := "Inches",
+		                                                 ConversionRatioNumerator := "1.0 1.0 1.0",
+		                                                 ConversionRatioDenominator := "1 1 1",
+		                                                 CoordinateSystemAutoTagUpdate := Enabled,
+		                                                 MaximumSpeed := 10.0,
+		                                                 MaximumAcceleration := 100.0,
+		                                                 MaximumDeceleration := 100.0,
+		                                                 ActualPositionTolerance := 0.1,
+		                                                 CommandPositionTolerance := 0.1,
+		                                                 TransformDimension := 3,
+		                                                 JointRatioNumerator := "1.0 1.0 1.0",
+		                                                 JointRatioDenominator := "1 1 1",
+		                                                 LinkLength1 := 0.0,
+		                                                 LinkLength2 := 0.0,
+		                                                 ZeroAngleOffset1 := 0.0,
+		                                                 ZeroAngleOffset2 := 0.0,
+		                                                 ZeroAngleOffset3 := 0.0,
+		                                                 BaseOffset1 := 0.0,
+		                                                 BaseOffset2 := 0.0,
+		                                                 BaseOffset3 := 0.0,
+		                                                 EndEffectorOffset1 := 0.0,
+		                                                 EndEffectorOffset2 := 0.0,
+		                                                 EndEffectorOffset3 := 0.0,
+		                                                 DynamicsConfigurationBits := 7,
+		                                                 MaximumAccelerationJerk := 1000.0,
+		                                                 MaximumDecelerationJerk := 1000.0);
+	END_TAG
+
+	PROGRAM MainProgram (MAIN := "MainRoutine",
+	                     MODE := 0,
+	                     DisableFlag := 0)
+			TAG
+				a : DINT (RADIX := Decimal) := 0;
+				AccdecRate : REAL (RADIX := Float) := 0.00000000e+000;
+				Active_motion : BOOL (RADIX := Decimal) := 0;
+				at_StartPosition : BOOL (RADIX := Decimal) := 0;
+				c : DINT (RADIX := Decimal) := 0;
+				cant : DINT (RADIX := Decimal) := 0;
+				Cart_Zero_XYZ : REAL[3] (RADIX := Float) := [0.00000000e+000,0.00000000e+000,0.00000000e+000];
+				data_is_Setup OF first_time (RADIX := Decimal);
+				done_Pass : BOOL (RADIX := Decimal) := 0;
+				done_StartPos : BOOL (RADIX := Decimal) := 0;
+				do_via_Auto : BOOL (RADIX := Decimal) := 0;
+				first_time : BOOL (RADIX := Decimal) := 0;
+				heigth : INT (RADIX := Decimal) := 0;
+				Len : INT (RADIX := Decimal) := 0;
+				mclm_initialposition_Zero : MOTION_INSTRUCTION  := [0,0,0,0,0,0,0,0,0];
+				MCT_oFF : BOOL (RADIX := Decimal) := 0;
+				mc_shape_Inc : MOTION_INSTRUCTION[20]  := [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0
+						],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0
+						],[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]];
+				myBit : BOOL (RADIX := Decimal) := 0;
+				next_angle : BOOL (RADIX := Decimal) := 0;
+				Over : DINT (RADIX := Decimal) := 0;
+				pass : DINT (RADIX := Decimal) := 0;
+				pass_count : DINT (RADIX := Decimal) := 0;
+				Pos_XYZ : REAL[20,3] (RADIX := Float) := [0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000,0.00000000e+000
+						];
+				Rotation_Angle_aroundZ : REAL (RADIX := Float) := 9.00000000e+001;
+				run_automatically : BOOL (RADIX := Decimal) := 1;
+				s7 : DINT (RADIX := Decimal) := 0;
+				seq1 : BOOL (RADIX := Decimal) := 0;
+				seq2 : BOOL (RADIX := Decimal) := 0;
+				seq3 : BOOL (RADIX := Decimal) := 0;
+				seq4 : BOOL (RADIX := Decimal) := 0;
+				seq5 : BOOL (RADIX := Decimal) := 0;
+				seq5_done : BOOL (RADIX := Decimal) := 0;
+				seq6 : BOOL (RADIX := Decimal) := 0;
+				seq6a : BOOL (RADIX := Decimal) := 0;
+				seq7 : BOOL (RADIX := Decimal) := 0;
+				seq8 : BOOL (RADIX := Decimal) := 0;
+				seq9 : BOOL (RADIX := Decimal) := 0;
+				Shape_active : BOOL (RADIX := Decimal) := 0;
+				Speed : REAL (RADIX := Float) := 0.00000000e+000;
+				speed_Inpo : REAL (RADIX := Float) := 0.00000000e+000;
+				step : DINT (RADIX := Decimal) := 0;
+				step2 : DINT (RADIX := Decimal) := 0;
+				Termtype : DINT (RADIX := Decimal) := 0;
+				trans : REAL[3] (RADIX := Float) := [0.00000000e+000,0.00000000e+000,0.00000000e+000];
+				t_org : REAL[3] (RADIX := Float) := [0.00000000e+000,0.00000000e+000,0.00000000e+000];
+				xPos : REAL (RADIX := Float) := 0.00000000e+000;
+				xtr_Pos : REAL (RADIX := Float) := 0.00000000e+000;
+				yPos : REAL (RADIX := Float) := 0.00000000e+000;
+				ytr_Pos : REAL (RADIX := Float) := 0.00000000e+000;
+				zPos : REAL (RADIX := Float) := 0.00000000e+000;
+			END_TAG
+
+			ROUTINE Auto_Sequence 
+					RC: "$N"
+					    "Automatically Sequence thru Example steps$N"
+					    "for Rotation of X,Y(tr) about the Z-axis via MCT with Rotation $N"
+					    "[see writeup in the a_ReadMe ST routine] $N"
+					    "(1) Move to StartPosition,  (2) Active the MCT$N"
+					    "(3) Activate Draw Profile  (4) see Trend Xtr, Ytr$N"
+					    "(5) Verify the Active_Motion completes$N"
+					    "***************************************************************$N"
+					    "to Make it in an Automatic Loop added:$N"
+					    "(6) Turn Off Transformation MCS,  (7) verify MCT Source status=Off$N"
+					    "(8) Add 90deg to Rotation {around Z}      ( 9) set to Do another Pass$N"
+					    "**********************************************************************************$N"
+					    "";
+					N: SBR(run_automatically)NOP();
+					RC: "from Manual steps [listed in a_ReadMe]$N"
+					    "(1) Move to StartPosition$N"
+					    "================================";
+					N: [XIC(do_via_Auto) ONS(seq1) ,XIC(next_angle) ONS(seq6a) ]OTL(Go_ToStartPosition);
+					RC: "(2) Activate the MCT$N"
+					    "{and Activate MCT with Proper Orient [0,0,angle]}$N"
+					    "=========================================";
+					N: XIC(at_StartPosition)ONS(seq2)OTL(Transform_Start_with_Orientation);
+					RC: "(3) Activate (Call to), Draw the Profile/Shape$N"
+					    "Prerequisite: at Start Position & Transform Status=True $N"
+					    "=============================================";
+					N: XIC(mct1.IP)XIC(at_StartPosition)ONS(seq3)XIC(cs_Source.TransformSourceStatus)OTL(Begin_Application);
+					RC: "(4) Use Trend to verify  Plot of  X(tr),Y(tr)  with Orientation (paralleogram)$N"
+					    "============================================================";
+					N: XIC(Active_motion)ONS(seq4)OTU(next_angle)OTU(Begin_Application)OTL(Shape_active);
+					RC: "(5) Check for  falling-edge of  Active_motion,$N"
+					    " to signal Motion=Complete$N"
+					    "==========================================";
+					N: XIC(Shape_active)XIO(Active_motion)OSF(seq5,seq5_done)XIC(seq5)OTL(done_Pass);
+					RC: "(6) De-Activate the MCT, via MCS of Source Coord_System$N"
+					    "{Required to ReActive MCT for each NEW ORIENTATION Angle}$N"
+					    "====================================================";
+					N: XIC(done_Pass)ONS(seq6)OTL(Transform_Stop1);
+					RC: "(7) Verify the  MCT =Off,  and$N"
+					    " Transform_Status of Source =Off$N"
+					    "=========================================";
+					N: XIO(cs_Source.TransformSourceStatus)XIO(mct1.IP)XIC(mc_transformStop.PC)ONS(seq7)OTL(MCT_oFF);
+					RC: "(8) Set Up a NEW ORIENTATION Angle  (for next MCT activation)$N"
+					    "{to Orient XY plane about Z, fill in Proper Orient [0,0,angle]}$N"
+					    "====================================================";
+					N: XIC(done_Pass)XIC(MCT_oFF)ONS(seq8)OTL(next_angle)ADD(90.0,Rotation_Angle_aroundZ,Rotation_Angle_aroundZ)GRT(Rotation_Angle_aroundZ,360.0)MOV(0.0,Rotation_Angle_aroundZ)OTU(next_angle);
+					RC: "Monitor the  Source systems Positions";
+					N: MOV(X.ActualPosition,xPos)MOV(Y.ActualPosition,yPos)MOV(Z.ActualPosition,zPos);
+					RC: "(9) Set to do Another full PASS $N"
+					    "       will stop when Angle=360deg$N"
+					    "=============================";
+					N: XIC(done_Pass)XIC(MCT_oFF)ONS(seq9)ADD(pass_count,1,pass_count)[OTU(Go_ToStartPosition) OTU(at_StartPosition) ,OTU(Transform_Start_with_Orientation) ,OTU(Begin_Application) ,OTU(Shape_active) ,OTU(Transform_Stop1) OTU(MCT_oFF) ,OTU(done_Pass) ];
+			END_ROUTINE
+
+			ST_ROUTINE a_ReadMe 
+				'
+				'/* All information provided "AS IS" -- No warranty or implied merchantability.
+				'Refer to the RSLogix 5000 End User License Agreement (EULA) in the Release Notes. */
+				'
+				'
+				'/* This Routine describes how to run the sample project */
+				'/* this Sample is for Cartesian to Cartesian   			*/
+				'/*						with Translation [in X & Y]		*/
+				'/*						and  Orientation [XY around Z]	*/
+				'/*							{Rotation}					*/
+				'/*														*/
+				'/* See SLIDE #10    Translation & Rotation				*/
+				'/*					[from Start-Page, Learning Center  	*/
+				'/*						  What's New: Kinematics slides]*/ 
+				'/* =====================================================*/
+				'
+				'/* Define  MCT  Source= the Virtual Programming space 	*/
+				'/*				Target= actual Axes [with any Applied Translation & Rotation] */
+				'/*														*/
+				'/* NOTE:	Conversion Constant- Resolution of Axes::			*/
+				'/*			also make Sure the Resolution of the 2 systems 		*/
+				'/*			that are to be Transformed are Equal.				*/
+				'/*			Since Normally Source=Virtual-axes, 				*/
+				'/*			their conversion constant can be made = to Physical axes*/  
+				'
+				'(*
+				'do STEPS  1->4  with  with Translation
+				'=======================================
+				'Step1 -	Move physical axes to start position
+				'		{this is needed to place (Xtr,Ytr) at Translation[X,Y] when MCT activated
+				'		 and thus allows the Profile to be Programmed in Incrimental mode} 
+				'		*see routine -  "Cartesian_StartPosition"
+				'		                -------------------------
+				'Step2 -  Start the Transform  & set Transform_Start=T
+				'		 and an Translation Vector of [11.0, 14.0, 0.0] & no Rotation.
+				'		**see routine  - "Transform_Routine"
+				'						 -------------------
+				'Step3 -  Begin Application
+				'		***see Routine - "Draw Profile"
+				'						  -------------
+				'Step4 -  Run Trend
+				'		 ****see Routine - "Plot_Ytr_Against_Xtr"
+				'
+				'=====================================================
+				'then to Run with the Profile Rotated (ie Orientation)
+				'Step5 -  Stop the Transform
+				'		*****ee routine  - "Transform_Routine"  & set Transform_Stop1=T
+				'
+				'then Repeat STEPS  1->4  with  Rotation
+				'Step1	-same
+				'Step2 -  Start the Transform  & set Transform_Start_with_Orientation=T
+				'								and an Rotation Angle  in ori[2]
+				'		**see routine  - "Transform_Routine"
+				'Step3,4	-same
+				'
+				'=====================================================
+				'then to Run with the various Rotations of Profile Tag="Rotation_Angle_Around_Z"
+				'Repeat:
+				'Step 5  & Step 1
+				'then 
+				'Step 2 	-with New Orientation angle
+				'Step 3,4
+				'REPEAT  . . . 
+				'
+				'*)
+				' 
+			END_ST_ROUTINE
+
+			ROUTINE Cartesian_StartPosition (Description := "to allow Incrimental programming,$Nmust move to X.translated_point$N               and Y.translated_point$NBefore MCT activat")
+					N: XIC(Go_ToStartPosition)EQU(step2,0)XIO(at_StartPosition)[MCLM(cs_Target,mclm_initialposition_Zero,0,Cart_Zero_XYZ[0],speed_Inpo,Units per sec,100.0,Units per sec2,100.0,Units per sec2,Trapezoidal,100.0,100.0,% of Time,2,Disabled,Programmed) ,XIC(mclm_initialposition_Zero.PC) ADD(1,step2,step2) ];
+					RC: "Do MAM  X,Y  to Starting Position$N"
+					    "for ABSOLUTE End_pt Rectangle moves After MCT,$N"
+					    "        * do not need X(t0), Y(t1)  before activate MCT$N"
+					    "for INCRIMENTAL End_pt Rectangle moves After MCT,$N"
+					    "       *     Yes need X(t0), Y(t1)  before activate MCT$N"
+					    "==========================================$N"
+					    "also need to check .IP bit to see Rung Transition (per call MAM as JSR)";
+					N: EQU(step2,1)[MAM(X_tr_physical,mc_initialposition[0],0,trans[0],speed_Inpo,Units per sec,100,Units per sec2,100,Units per sec2,Trapezoidal,1000,1000,Units per sec3,Disabled,Programmed) ,MAM(Y_tr_physical,mc_initialposition[1],0,trans[1],speed_Inpo,Units per sec,100,Units per sec2,100,Units per sec2,Trapezoidal,1000,1000,Units per sec3,Disabled,Programmed) ,MAM(Z_tr_physical,mc_initialposition[2],0,trans[2],speed_Inpo,Units per sec,100,Units per sec2,100,Units per sec2,Trapezoidal,1000,1000,Units per sec3,Disabled,Programmed) ];
+					N: EQU(step2,1)XIC(mc_initialposition[0].PC)XIC(mc_initialposition[1].PC)XIC(mc_initialposition[2].PC)ADD(1,step2,step2);
+					N: EQU(step2,2)ONS(done_StartPos)OTL(at_StartPosition)OTU(Go_ToStartPosition)MOV(0,step2);
+			END_ROUTINE
+
+			ROUTINE Draw_Profile (Description := "for 2D only:  X,Y  EndPt[x,y]$N Draw a Parallelogram (Incrimental)$N")
+					RC: "Draw a Canted Rectangle (ie Parallelogram)  7    with a Cross inside the Border(X)$N"
+					    "see ST routine ,  as it set$'s-up EndPoints$N"
+					    "{Note this is ALL INCREMENTAL moves !!}";
+					N: XIC(Begin_Application)EQU(step,0)[MCLM(cs_Source,mc_shape_Inc[0],1,Pos_XYZ[0,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[0].PC) ADD(1,step,step) OTL(Active_motion) ];
+					RC: "the 1st Move is would be Over any Starting incriment in X";
+					N: EQU(step,1)[MCLM(cs_Source,mc_shape_Inc[1],1,Pos_XYZ[1,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[1].PC) ADD(1,step,step) ];
+					N: EQU(step,2)[MCLM(cs_Source,mc_shape_Inc[2],1,Pos_XYZ[2,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[2].PC) ADD(1,step,step) ];
+					N: EQU(step,3)[MCLM(cs_Source,mc_shape_Inc[3],1,Pos_XYZ[3,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[3].PC) ADD(1,step,step) ];
+					N: EQU(step,4)[MCLM(cs_Source,mc_shape_Inc[4],1,Pos_XYZ[4,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[4].PC) ADD(1,step,step) ];
+					N: EQU(step,5)[MCLM(cs_Source,mc_shape_Inc[5],1,Pos_XYZ[5,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[5].PC) ADD(1,step,step) ];
+					RC: "-- Points  6,7,8  = Cross in the corner$N"
+					    "6=Top right corner, 7=neg (over in X), 8=to Bottom corner  ";
+					N: EQU(step,6)[MCLM(cs_Source,mc_shape_Inc[6],1,Pos_XYZ[6,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[6].PC) ADD(1,step,step) ];
+					N: EQU(step,7)[MCLM(cs_Source,mc_shape_Inc[7],1,Pos_XYZ[7,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[7].PC) ADD(1,step,step) ];
+					RC: "-- Points  6,7,8  = Cross in the corner$N"
+					    "6=Top right corner, 7=neg (over in X), 8=to Bottom corner  ";
+					N: EQU(step,8)[MCLM(cs_Source,mc_shape_Inc[8],1,Pos_XYZ[8,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[8].PC) ADD(1,step,step) ];
+					RC: "--   back  at  (0.0, 0.0)  [Relative]";
+					N: EQU(step,9)[MCLM(cs_Source,mc_shape_Inc[9],1,Pos_XYZ[9,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[9].PC) ADD(1,step,step) ];
+					RC: "-- this Will leave position  back  to  (0.0, 0.0)  [Relative]";
+					N: EQU(step,10)[MCLM(cs_Source,mc_shape_Inc[10],1,Pos_XYZ[10,0],Speed,Units per sec,AccdecRate,Units per sec2,AccdecRate,Units per sec2,Trapezoidal,100.0,100.0,% of Time,Termtype,Disabled,Programmed) ,XIC(mc_shape_Inc[10].PC) ADD(1,step,step) ];
+					RC: "COMPLETE::  set DONE flag &  set StepI=0  for next time thru.";
+					N: EQU(step,11)OTU(Active_motion)MOV(0,step);
+			END_ROUTINE
+
+			ST_ROUTINE Error_Codes 
+				'(*
+				'
+				'/*****************************************	*/
+				'/*  Error Codes for the MCT Instruction 	*/
+				'/*****************************************	*/
+				'
+				'/* 
+				'	Error#	Meaning
+				'	======	=======
+				'	#61	Connection Conflict.  (and extended Error codes)
+				'	#62	Transform in Progress.
+				'	#63	Axis in Transform Motion
+				'	#64	Ancillary Not Supported
+				'	#65	Axis Position Overflow
+				'	#66	Transform Computation Error
+				'	#67	Invalid Transform Position
+				'	#68	Transform at Origin
+				'	#69	Maximum Joint Velocity Exceeded
+				'	#70	Axis in Transform Must be Linear
+				'	#71 Transform Turning Off
+				'	#72 Max Joint Angle Exceeded
+				'	#73 Coordinate System Chaining Error
+				'	#74 Invalid Orientation Angle
+				'	#75 Instruction Not Supported
+				'	#76 Zero Max Decel Jerk
+				'	#77 Transform Direction Not Supported
+				'	#78 Invalid Rotary Configuration
+				'*/
+				'
+				'/************************************
+				'	Error#	Details of Meaning
+				'	======	==================
+				'	#61	Connection Conflict.
+				'
+				'#61	Connection Conflict.
+				'		The connection of the source and target systems is invalid.
+				'   		The extended error code will indicate the reason
+				'		.EXERR
+				'		1)	Source and Target systems must be in same motion group.
+				'		2)	Source and Target systems may not be the same.
+				'		3)	Source system has transform dimension of zero.
+				'		4)	Target system has transform dimension of zero.
+				'		5)	Source system being re-used as a source in multiple transforms.
+				'		6)	Target system being re-used as a target in multiple transforms.
+				'		7)	Axes in Source or Target system already in use in a transform.
+				'		8)	Circular definition in Source and Target system connections.
+				'		9)	Axes being used on both Source and Target sides of the transform.
+				'		10)	Axes moving or Locked by another operation when MCT was initiated.
+				'		11)	Internal error in connection of transform
+				'		12)	Link lengths configured to 0.0
+				'		13)	Transform Axis is in a shut-down state.
+				'		14)	Transform Axis is Inhibited.
+				'		15)	Transform Invalid Offset Length,
+				'			(Invalid Offset also result from negative Base-offset, or X1b-X1e<0.0).
+				'		16)	Transform Invalid SCARA Configuration.
+				'
+				'#62	Transform in Progress.
+				'		1. 	Attempt to perform an operation that is not allowed while a transform is active.
+				' 		(examples,
+				'			a. Homing an axis,
+				'			b. Tuning an axis.
+				'	 		c. Redefine position of an axis in the transform)
+				'		2. 	Attempt to execute MCT while MCT already active . A second MCT on the same
+				'			Source And Target is not allowed.perform an operation that is not allowed.
+				'
+				'#63	Axis in Transform Motion
+				'	 	1. 	Attempt to move an axis (MAM, JOG, MCLM etc) which is 
+				'			currently being moved by a transformation operation.
+				'	 	2. 	Attempt to execute MCT while a Source or Target axis is being moved
+				'			by a transformed motion of some kind.
+				'		3. 	If the Target axes are off (MSF) while transform is active, the Source
+				'			is then assumed to bne under Transform control, and ControlledByTransform 
+				'			flag is set. At this point any moves on the source will result in Error#63.
+				'		4. 	The MCT activation need to be given enough time to be processed. Use the 
+				'			ControlledByTransform status bit to validate that MCT process is complete.
+				'
+				'#64	Ancillary Not Supported
+				'	 	MCLM or MCCM attempted on ancillary axis
+				'
+				'#65	Axis Position Overflow
+				'		Examples:
+				'		1. 	Mathematical error in computations such as a trying 
+				'		   	to take square root of a negative number. 
+				'	 	2. 	Axes Position overflow or a master offset that has exceeded travel limits 
+				'
+				'#66	Transform Computation Error
+				'		Some kind of mathematical error in computations.
+				'		Such as trying to take square root of negative number.
+				'
+				'#67	Invalid Transform Position
+				'		1. 	Attempt to move to an invalid position for transformation.
+				'		   	Example move to origin  or moving beyond the limits of the robots arm lengths
+				'		2. 	Attempt to move beyond machine’s link length limits. 
+				'		3.	One of Kinematics equations tried to perform an invalid operation,
+				'			such as taking square toot of negative number
+				'		4. 	MCT attempted when sitting at the origin.
+				'
+				'#68	Transform at Origin
+				'		1.	Transform attempting to move to a singularity point, such as the origin
+				'		2.	Joint starting positions result in X1=0, X2=0. for MCT.
+				'
+				'#69	Maximum Joint Velocity Exceeded
+				'		1. 	Joint Velocity exceeds:  2-times the configured Maximum joint velocity.
+				'		2. 	Trying to move from a right to left handed solution
+				'		3. 	Moving away from X0 Y0 at a different angle than it
+				'			was approached.
+				'		4. 	Large joint move was attempted around a singularity position.
+				'
+				'#70	Axis in Transform Must be Linear
+				'		Axes involved in transform must be configured as a Linear Axis
+				'
+				'#71 Transform Turning Off
+				'		MCT executed while MCT is truning off from preceeding MCT error.
+				'
+				'#72 Max Joint Angle Exceeded
+				'		Attempt to move Joint axes beyond +/- 360 degrees.
+				'
+				'#73 Coordinate System Chaining Error
+				'
+				'#74 Invalid Orientation Angle
+				'		Transform attempted to move Joint axes beyond +/- 360 degrees,
+				'		as a result of a transfrom computation. 
+				'
+				'#75 Instruction Not Supported
+				'		MCT and MCTP instructions only supported on the L6x processor family.
+				'
+				'
+				'#77 Transform Direction Not Supported
+				'		1. 	MCTP instruction with 2 axes in the Coord_system only supports
+				'			enumerations of Inverse_Right & Inverse_left.
+				'		2.	Base Offsets and End_Effector Offsets for axes #2 on a 3 axis
+				'			coordiante system must be 0 if an MCTP Inverse_RightArm or Inverse_LeftArm
+				'			is executed.
+				'
+				'#78 Invalid Rotary Configuration
+				'		If the unwind of the axis is not 360, generate this error.
+				'		(Position Unwind / Conversion Constant) should equal 360. 
+				'
+				'Error#	Details of Meaning
+				'======	==================
+				'************************************/
+				'
+				'*)
+				'
+				'
+				'/*****************************************	*/
+				'/*  Motion Instruction,  Error List			*/
+				'/*****************************************	*/
+				'/*
+				'	Error#	Meaning
+				'	======	=======
+				'	#01	Reserved Error Code
+				'	#02	Reserved Error Code
+				'	#03	Execution Collision
+				'	#04	Servo_On State error
+				'	#05	Servo_Off State error
+				'	#06	Drive_On State error
+				'	#07	Shutdown State error
+				'	#08 Axis_type is Not Servo error
+				'	#09	Overtravel Condition
+				'	#10	Master axis Conflict
+				'	#11	Axis Not Configured
+				'	#12	Servo Message Failure
+				'	#13	Parameter Out-of-Range
+				'	#14	Tune Process error
+				'	#15	Test Process error
+				'	#16	Home In_Process error
+				'	#17	Axis_mode Not Rotary
+				'	#18	Axis_type Unused
+				'	#19	Group Not Synchronized
+				'	#20	Axis in Faulted State
+				'	#21	Group in Faulted State
+				'	#22	Axis In Motion
+				'	#23	Illegal Dynamic change
+				'	#24	Illegal AC Mode Operation
+				'	#25	Illegal Instruction
+				'	#26	Illegal CAM Length
+				'	#27	Illegal CAM Profile Length
+				'	#28	Illegal CAm Type
+				'	#29	Illegal CAM Order
+				'	#30	CAM Profile Being Calculated
+				'	#31	CAM Profile Being Used
+				'	#32	CAM Profile Not Calculated
+				'	#33	Position CAM Not Enabled
+				'	#34	Registration In Process error
+				'	#35	Illegal Execution Target
+				'	#36	Illegal Output CAM
+				'	#37	Illegal Output Compensation
+				'	#38	Illegal Axis Data_type
+				'	#39	Process Conflict
+				'	#40	Drive Locally Disabled
+				'	#41	Illegal Homing configuration
+				'	#42	Shutdown Status Timeout
+				'	#43	Coordiante Motion Que is Full
+				'	#44	Circular CoLinearity error
+				'	#45	Circular Start-pt, End-pt error
+				'	#46	Circular R1 R2 Mismatch error
+				'	#47	Circular Infinite Solutions error
+				'	#48	Circular No Solutions error
+				'	#49	Circualr Small Radius(R) error
+				'	#50	Coordiante_System Not in Group
+				'	#51	Invalid Actual Tolerance
+				'	#52	Coordiante_Motion In Process error
+				'	#53	Axis is Inhibited
+				'	#54	Zero Maximum Deceleration
+				'	#55 Reserved....
+				'	...	...
+				'	#60 Reserved....
+				'	#61 thru #77  Kinematics errors (defined in section above)
+				'		
+				'*/
+				'
+			END_ST_ROUTINE
+
+			ROUTINE MainRoutine 
+					RC: "$N"
+					    "All information provided  -- No warranty or implied merchantability.$N"
+					    "Refer to the RSLogix 5000 End User License Agreement (EULA) in the Release Notes.$N"
+					    "";
+					N: NOP();
+					RC: "setup the Intial Parameters on First_Scan";
+					N: XIC(s:fs)JSR(Setup_XYZ_Positions,0);
+					RC: "Example Project for Motion Kinematics, using MCT for Rotation & Translation$N"
+					    "of Source & Target Cartesian Coordinate_Systems.$N"
+					    "See ST Routine  for Manual steps for running the Application   $N"
+					    "          See LD Routine  for Automatic steps in  running the Application $N"
+					    "(1) Move to StartPosition,  (2) Active the MCT$N"
+					    "(3) Activate Draw Profile  (4) see Trend Plot of Xtr, Ytr$N"
+					    "***************************************************************";
+					N: JSR(Transform_Routine,0);
+					N: JSR(Cartesian_StartPosition,0);
+					N: JSR(Draw_Profile,0);
+					RC: "see   for Plot of Rotated (X,Y) around Z$N"
+					    " using Transformation:  MCT with Rotation. $N"
+					    "Set here to Run Automatically:  else  see steps in ST routine a_ReadMe $N"
+					    "==========================================================";
+					N: XIC(run_automatically)XIC(data_is_Setup)JSR(Auto_Sequence,1,run_automatically);
+					RC: "Monitor Status [via an AFI rung]$N"
+					    "===========================";
+					N: AFI()XIC(Go_ToStartPosition)XIC(at_StartPosition)XIC(mct1.IP)XIC(Active_motion)MOV(orient[2],save_Orient)NOP();
+					N: MOV(X.ActualPosition,xPos)MOV(Y.ActualPosition,yPos)MOV(Z.ActualPosition,zPos);
+					N: MOV(X_tr_physical.ActualPosition,xtr_Pos)MOV(Y_tr_physical.ActualPosition,ytr_Pos);
+			END_ROUTINE
+
+			ST_ROUTINE Setup_XYZ_Positions (Description := "define the Motion Endpoints (ie Shape)")
+				'/* Initialize needed Variables */
+				'
+				'/* these get set ONLY the very 1st Scan thru the Program */
+				'/*               --------------------------------------- */
+				'if NOT(first_time) then
+				'pass := 1;
+				'
+				'orient[0]   := 0;	/* MCT Rotation "Orientation" */
+				'orient[1]   := 0;
+				'orient[2]   := 0;	/* [2] will Vary to all  Rotate  X&Y  around Z */
+				'
+				'/* [Absolute Reference for Cartesian_BAse 	*/
+				'/* to allow re-use in all 4-Quadrants 		*/
+				'Cart_Zero_XYZ[0] := 0;	/* start (0,0) 	*/
+				'Cart_Zero_XYZ[1] := 0;	/* 				*/	
+				'Cart_Zero_XYZ[2] := 0;
+				'
+				'Active_motion :=0;
+				'
+				'/* MCLM instruction Info: Speed, Acc/Dec, termType */
+				'Speed := 7.0 ;
+				'speed_Inpo := 3.0 ;
+				'Termtype := 2;
+				'step := 0;
+				'AccdecRate := 100.0;
+				'
+				'at_StartPosition := 0;
+				'
+				'trans[0] := 11;	/* MCT Translation */
+				'trans[1] := 14;
+				'trans[2] := 0;
+				'
+				't_org[0] := 0;	/* MCT Translation 	*/
+				't_org[1] := 0; 	/*  0 Origin		*/
+				't_org[2] := 0;
+				'
+				'/* ================--======================	*/
+				'/* For  RLL routine: Draw_Profile			*/
+				'/* Draw	Paralleogram  with a Cross-X inside	*/
+				'/* (ie  a canted-RECTANGLE)					*/
+				'/* ========================================	*/
+				'/* a 7" x 3" Rectangle  starting ?" over in X  */
+				'Len := 7;
+				'heigth:= 3;
+				'cant:= (heigth / 2);   /*(1.5) */   /* (ie 1/2 of height) */ 
+				'Over:= 0;
+				'/* ================================ */
+				'/* INCREMENTAL   RECTANGLE & CROSS 	*/
+				'/* ================================ */
+				'/* [Incremental to allow re-use in all 4-Quadrants */
+				'Pos_XYZ[0,0] := 0;		/* start (0,0) */
+				'Pos_XYZ[0,1] := 0;		/* ie:   reference*/
+				'Pos_XYZ[1,0] := Over;	/* ie:  (?,0)  now Rectangle */
+				'Pos_XYZ[1,1] := 0;
+				'Pos_XYZ[2,0] := Len;	/* ie:  (7,0)  now Rectangle */
+				'Pos_XYZ[2,1] := 0;
+				'Pos_XYZ[3,0] := cant;	/* ie:  (7,3  +cant in X) */
+				'Pos_XYZ[3,1] := heigth;
+				'Pos_XYZ[4,0] := -Len; 	/* ie:  (0,3) +cant in X*/
+				'Pos_XYZ[4,1] :=  0;
+				'Pos_XYZ[5,0] := -cant;		/* ie:  (0,0) */
+				'Pos_XYZ[5,1] := -heigth;
+				'/* then do the Cross inside the (Left part of) Rectagle */
+				'Pos_XYZ[6,0] := heigth+cant;/* Diagonal up to the (3,3 corner) */
+				'Pos_XYZ[6,1] := heigth;
+				'Pos_XYZ[7,0] := -heigth;	/* then over to the Y ordinate (0,7)  */
+				'Pos_XYZ[7,1] := 0;
+				'Pos_XYZ[8,0] :=  heigth-cant; 	/* Diagonal along X to (3,0) 	*/
+				'Pos_XYZ[8,1] := -heigth;
+				'Pos_XYZ[9,0] := -heigth;	/* then back to Original Reference (0,0) */
+				'Pos_XYZ[9,1] := 0;
+				'Pos_XYZ[10,0] := 0;		/* end (0,0) */
+				'Pos_XYZ[10,1] := 0;		/* ie:   reference*/
+				'/* Moving in X-Y  so All Z-moves = 0!! */ 
+				'Pos_XYZ[0,2] := 0;
+				'Pos_XYZ[1,2] := 0;
+				'Pos_XYZ[2,2] := 0;
+				'Pos_XYZ[3,2] := 0;
+				'Pos_XYZ[4,2] := 0;
+				'Pos_XYZ[5,2] := 0;
+				'Pos_XYZ[6,2] := 0;
+				'Pos_XYZ[7,2] := 0;
+				'Pos_XYZ[8,2] := 0;
+				'Pos_XYZ[9,2] := 0;
+				'Pos_XYZ[10,2] := 0;
+				'
+				'
+				'/*  when  DONE  !!!! */
+				'first_time :=1;
+				'end_if;
+				'
+				'
+			END_ST_ROUTINE
+
+			ROUTINE Transform_Routine 
+					RC: "Enable transform WITh a Orientation Angle (-ie Rotate the Profile)$N"
+					    "NOTE must do MCT=STOP, then ReTrigger MCT with the Orientation Angle to take Affect$N"
+					    "";
+					N: XIC(Transform_Start_with_Orientation)XIO(Active_motion)MOV(Rotation_Angle_aroundZ,orient[2])OTL(Transform_Start);
+					RC: "+++++++++++++++++++++++++$N"
+					    "Transform MCT Activate $N"
+					    "+++++++++++++++++++++++++$N"
+					    "Enable transform and once enabled as indicated by the  status,$N"
+					    "  the trigger bit  is disabled$N"
+					    "==========================================================$N"
+					    "";
+					N: XIC(Transform_Start)XIO(Active_motion)[MCT(CS_Cartesian_Base_Frame,CS_Cartesian_Transformed_Frame,mct1,orient[0],trans[0]) ,XIC(mct1.IP) OTU(Transform_Start_with_Orientation) OTU(Transform_Start) ];
+					RC: "Verify the Status of the Tansfomeation-Active status of the$N"
+					    "Source & Target  Coord_System$'s";
+					N: [XIC(cs_Source.TransformSourceStatus) ,XIC(cs_Target.TransformTargetStatus) ]NOP();
+					RC: "++++++++++++++++++++++++++++++$N"
+					    "Transform Stop Rung$N"
+					    "++++++++++++++++++++++++++++++$N"
+					    "also Set Application flags:  to DISABLE:$N"
+					    "Begin_Application=False  & at_StartPosition=FALSE$N"
+					    "and Set Orient[2]=0 deg$N"
+					    "";
+					N: XIC(Transform_Stop1)[MCS(cs_Source,mc_transformStop,Coordinated Transform,No,100,Units per sec2,Yes,100.0,% of Time) ,XIC(mc_transformStop.PC) OTU(Transform_Stop1) OTU(at_StartPosition) OTU(Begin_Application) CLR(orient[2]) ];
+					RC: "Please Note:  a Motion Axis stop  will also$N"
+					    "stop the transform$N"
+					    "";
+					N: XIC(Transform_Stop2)[MAS(X_tr_physical,mc_transformStop2,All,No,100,Units per sec2,No,1000,Units per sec3) ,XIC(mc_transformStop2.PC) OTU(Transform_Stop2) OTU(at_StartPosition) OTU(Begin_Application) CLR(orient[2]) ];
+			END_ROUTINE
+
+	END_PROGRAM
+
+	TASK MainTask (Type := CONTINUOUS,
+	               Rate := 10,
+	               Priority := 10,
+	               Watchdog := 500,
+	               DisableUpdateOutputs := No,
+	               InhibitTask := No)
+			MainProgram;
+	END_TASK
+
+	TREND Plot_Ytr_against_Xtr (SamplePeriod := 10,
+	                            NumberOfCaptures := 1,
+	                            CaptureSizeType := Time Period,
+	                            CaptureSize := 180000,
+	                            StartTriggerType := No Trigger,
+	                            StopTriggerType := No Trigger,
+	                            TrendxVersion := "5.2")
+			Template := [208,207,17,224,161,177,26,225,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,62,0,3,0,254,255,9,0,6,0,0,0,0,0,0,0
+,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,16,0,0,2,0,0,0,1,0,0,0,254,255,255,255,0,0,0,0,0,0,0,0
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,253,255,255,255,254,255,255,255
+,254,255,255,255,4,0,0,0,5,0,0,0,6,0,0,0,254,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,82,0,111,0,111,0,116,0,32,0,69,0,110,0,116,0
+,114,0,121,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,22,0,5,0,255,255,255,255,255,255,255,255,1,0,0,0,14,52,81,191,9,48,205,65,159,190,222,136,174,167,50,40
+,0,0,0,0,0,0,0,0,0,0,0,0,16,195,243,201,202,53,199,1,3,0,0,0,192,6,0,0,0,0,0,0,67,0,111,0,110,0,116,0
+,101,0,110,0,116,0,115,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,18,0,2,1,255,255,255,255,255,255,255,255,255,255,255,255,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,185,6,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,255,255,255,255,255,255,255,255,255,255,255
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,255,255,255
+,255,255,255,255,255,255,255,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,3,0,0,0,4,0,0,0,5,0,0,0,6,0,0,0
+,7,0,0,0,8,0,0,0,9,0,0,0,10,0,0,0,11,0,0,0,12,0,0,0,13,0,0,0,14,0,0,0,15,0,0,0,16,0,0,0
+,17,0,0,0,18,0,0,0,19,0,0,0,20,0,0,0,21,0,0,0,22,0,0,0,23,0,0,0,24,0,0,0,25,0,0,0,26,0,0,0
+,254,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,4,0,0,0,231,67,0,0,137,19,0,0,0,0,0,0,13,0,0,0,255,254,255,20,80,0,108,0,111,0,116,0
+,95,0,89,0,116,0,114,0,95,0,97,0,103,0,97,0,105,0,110,0,115,0,116,0,95,0,88,0,116,0,114,0,0,0,0,0,1,0,0,0
+,2,0,0,0,200,0,0,0,255,157,3,0,255,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,1,96,234
+,0,0,0,0,0,0,255,255,255,0,0,0,0,0,0,0,0,0,0,46,6,0,0,4,0,255,255,1,0,13,0,67,86,105,101,119,76,105,110,101
+,73,110,102,111,3,0,0,0,1,0,0,0,0,0,160,192,0,0,112,65,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0
+,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,16,88,0,46,0,65,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0
+,115,0,105,0,116,0,105,0,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,1,128,3,0,0,0,1,0,0,0,0,0,160,192,0
+,0,112,65,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255
+,254,255,16,89,0,46,0,65,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0,115,0,105,0,116,0,105,0,111,0,110,0,32,1,0,0,0
+,255,254,255,0,255,254,255,0,1,128,3,0,0,0,1,0,0,0,0,0,0,0,0,0,200,66,255,254,255,0,255,254,255,0,0,0,0,0,0,0
+,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,28,88,0,95,0,116,0,114,0,95,0,112,0,104,0
+,121,0,115,0,105,0,99,0,97,0,108,0,46,0,65,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0,115,0,105,0,116,0,105,0,111,0
+,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,1,128,3,0,0,0,1,0,0,0,0,0,0,0,0,0,200,66,255,254,255,0,255,254,255
+,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,28,89,0,95,0,116,0,114
+,0,95,0,112,0,104,0,121,0,115,0,105,0,99,0,97,0,108,0,46,0,65,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0,115,0,105
+,0,116,0,105,0,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,9,0,0,0,2,0,0,0,3,0,0,0,1,0,0,0,1,0
+,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0
+,0,0,1,0,0,0,4,0,255,128,128,0,0,0,255,0,255,0,0,0,0,128,0,0,255,255,255,0,2,0,0,0,4,0,0,0,4,0,0,0
+,0,0,0,0,0,0,200,193,0,0,200,65,0,0,0,0,0,0,0,0,148,116,166,0,0,0,0,0,1,0,0,0,0,0,0,0,4,0,1,0
+,0,0,1,0,0,0,1,0,0,0,1,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0
+,0,0,0,0,0,0,1,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,255,255,255,0,0,0,0,44,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,128,128,128,0,128,128,128,0,255,239,255,254,255,191,255,247,174,174,166,69,1,0,0,0,124,2,0,0,218,175,166,69,1,0,0,0,124,2,0,0
+,255,254,255,0,1,0,0,0,1,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,40,0,0,0,50,0
+,0,0,0,0,0,0,0,0,0,0,92,0,0,0,245,255,255,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,255,254,255,5,65,0,114,0,105,0,97,0,108,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,0
+,32,1,0,0,0,255,254,255,0,255,254,255,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,0,32,1,0
+,0,0,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,255,255,255,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,8,0
+,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,4,0,255,255,1,0,9,0,67,76,105,110,101,73,110,102,111,3,0,0,0,1,0,0,0,0,0,160,192,0,0,112,65,255,254,255,0,255
+,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,16,88,0,46,0,65
+,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0,115,0,105,0,116,0,105,0,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0
+,6,128,3,0,0,0,1,0,0,0,0,0,160,192,0,0,112,65,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0
+,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,16,89,0,46,0,65,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0,115,0
+,105,0,116,0,105,0,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,6,128,3,0,0,0,1,0,0,0,0,0,0,0,0,0,200
+,66,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255
+,28,88,0,95,0,116,0,114,0,95,0,112,0,104,0,121,0,115,0,105,0,99,0,97,0,108,0,46,0,65,0,99,0,116,0,117,0,97,0,108
+,0,80,0,111,0,115,0,105,0,116,0,105,0,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,6,128,3,0,0,0,1,0,0,0
+,0,0,0,0,0,0,200,66,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0
+,255,254,255,0,255,254,255,28,89,0,95,0,116,0,114,0,95,0,112,0,104,0,121,0,115,0,105,0,99,0,97,0,108,0,46,0,65,0,99,0
+,116,0,117,0,97,0,108,0,80,0,111,0,115,0,105,0,116,0,105,0,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,0,0,0
+,0,46,0,83,0,1,0,0,0,0,111,0,86,0,49,0,54,0,95,0,66,0,50,0,49,0,46,0,65,0,67,0,68,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,228,121,93,13,53,199,1,176,154,109,124,102,53,199,1,240,182,169,234,25,38,199,1,240,182,169,234,25,38,199,1
+,1,96,1,0,0,0,0,0,0,112,1,0,0,0,0,0,32,0,0,0,68,0,0,0,0,0,0,0,24,0,83,0,67,0,65,0,82,0,65,0
+,95,0,126,0,50,0,46,0,76,0,53,0,75,0,83,0,67,0,65,0,82,0,65,0,95,0,105,0,110,0,100,0,101,0,112,0,101,0,110,0
+,100,0,101,0,110,0,116,0,95,0,67,0,68,0,95,0,116,0,111,0,86,0,49,0,54,0,95,0,66,0,50,0,49,0,46,0,76,0,53,0
+,75,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,127,105,3,0];
+		PEN X.ActualPosition (Color := 16#0080_80ff,
+		                      Visible := 0,
+		                      Width := 1,
+		                      Type := Analog,
+		                      Style := 0,
+		                      Marker := 0,
+		                      Min := -5.0,
+		                      Max := 15.0)
+		END_PEN
+
+		PEN Y.ActualPosition (Color := 16#00ff_0000,
+		                      Visible := 0,
+		                      Width := 1,
+		                      Type := Analog,
+		                      Style := 0,
+		                      Marker := 0,
+		                      Min := -5.0,
+		                      Max := 15.0)
+		END_PEN
+
+		PEN X_tr_physical.ActualPosition (Color := 16#0000_00ff,
+		                                  Visible := 0,
+		                                  Width := 1,
+		                                  Type := Analog,
+		                                  Style := 0,
+		                                  Marker := 0,
+		                                  Min := 0.0,
+		                                  Max := 100.0)
+		END_PEN
+
+		PEN Y_tr_physical.ActualPosition (Color := 16#0000_8000,
+		                                  Visible := 1,
+		                                  Width := 1,
+		                                  Type := Analog,
+		                                  Style := 0,
+		                                  Marker := 0,
+		                                  Min := 0.0,
+		                                  Max := 100.0)
+		END_PEN
+
+	END_TREND
+
+	TREND Plot_Y_against_X (SamplePeriod := 10,
+	                        NumberOfCaptures := 1,
+	                        CaptureSizeType := Time Period,
+	                        CaptureSize := 180000,
+	                        StartTriggerType := No Trigger,
+	                        StopTriggerType := No Trigger,
+	                        TrendxVersion := "5.2")
+			Template := [208,207,17,224,161,177,26,225,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,62,0,3,0,254,255,9,0,6,0,0,0,0,0,0,0
+,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,16,0,0,2,0,0,0,1,0,0,0,254,255,255,255,0,0,0,0,0,0,0,0
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,253,255,255,255,254,255,255,255
+,254,255,255,255,4,0,0,0,5,0,0,0,254,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,82,0,111,0,111,0,116,0,32,0,69,0,110,0,116,0
+,114,0,121,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,22,0,5,0,255,255,255,255,255,255,255,255,1,0,0,0,14,52,81,191,9,48,205,65,159,190,222,136,174,167,50,40
+,0,0,0,0,0,0,0,0,0,0,0,0,96,120,159,60,82,54,198,1,3,0,0,0,128,4,0,0,0,0,0,0,67,0,111,0,110,0,116,0
+,101,0,110,0,116,0,115,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,18,0,2,1,255,255,255,255,255,255,255,255,255,255,255,255,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,117,4,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,255,255,255,255,255,255,255,255,255,255,255
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,255,255,255
+,255,255,255,255,255,255,255,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,3,0,0,0,4,0,0,0,5,0,0,0,6,0,0,0
+,7,0,0,0,8,0,0,0,9,0,0,0,10,0,0,0,11,0,0,0,12,0,0,0,13,0,0,0,14,0,0,0,15,0,0,0,16,0,0,0
+,17,0,0,0,254,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
+,255,255,255,255,255,255,255,255,4,0,0,0,17,76,0,0,107,34,0,0,0,0,0,0,13,0,0,0,255,254,255,16,80,0,108,0,111,0,116,0
+,95,0,89,0,95,0,97,0,103,0,97,0,105,0,110,0,115,0,116,0,95,0,88,0,0,0,0,0,1,0,0,0,0,0,0,0,200,0,0,0
+,255,157,3,0,255,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,1,96,234,0,0,0,0,0,0,255,255
+,255,0,0,0,0,0,0,0,0,0,0,242,3,0,0,2,0,255,255,1,0,13,0,67,86,105,101,119,76,105,110,101,73,110,102,111,3,0,0,0
+,1,0,0,0,0,0,160,192,0,0,112,65,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0
+,255,254,255,0,255,254,255,0,255,254,255,16,88,0,46,0,65,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0,115,0,105,0,116,0,105,0
+,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,1,128,3,0,0,0,1,0,0,0,0,0,160,192,0,0,112,65,255,254,255,0,255
+,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,16,89,0,46,0,65
+,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0,115,0,105,0,116,0,105,0,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0
+,9,0,0,0,2,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0
+,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,2,0,128,64,0,0,0,0,255,0,255,255,255,0,2,0
+,0,0,4,0,0,0,4,0,0,0,0,0,0,0,0,0,200,193,0,0,200,65,0,0,0,0,0,0,0,0,148,116,166,0,0,0,0,0,1,0
+,0,0,0,0,0,0,2,0,1,0,0,0,1,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,1,0,0,0,2,0,0,0
+,0,0,0,0,0,0,255,255,255,255,0,0,0,0,44,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,128,128,0,128,128,128,0,255,239,255,254,255,191,255,247,234,20,250,67,1,0
+,0,0,156,0,0,0,158,21,250,67,1,0,0,0,156,0,0,0,255,254,255,0,1,0,0,0,1,0,0,0,2,0,0,0,0,0,0,0,0,0
+,2,0,0,0,40,0,0,0,50,0,0,0,0,0,0,0,0,0,0,0,92,0,0,0,245,255,255,255,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,254,255,5,65,0,114,0,105,0,97,0,108,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254
+,255,0,255,254,255,0,255,254,255,0,32,1,0,0,0,255,254,255,0,255,254,255,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255
+,254,255,0,255,254,255,0,32,1,0,0,0,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,255,255,255,0,0,0,0,0,4,0,0,0
+,0,0,0,0,0,0,0,0,8,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,255,255
+,1,0,9,0,67,76,105,110,101,73,110,102,111,3,0,0,0,1,0,0,0,0,0,160,192,0,0,112,65,255,254,255,0,255,254,255,0,0,0,0
+,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0,255,254,255,0,255,254,255,0,255,254,255,16,88,0,46,0,65,0,99,0,116,0,117
+,0,97,0,108,0,80,0,111,0,115,0,105,0,116,0,105,0,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,4,128,3,0,0,0
+,1,0,0,0,0,0,160,192,0,0,112,65,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,255,254,255,0
+,255,254,255,0,255,254,255,0,255,254,255,16,89,0,46,0,65,0,99,0,116,0,117,0,97,0,108,0,80,0,111,0,115,0,105,0,116,0,105,0
+,111,0,110,0,32,1,0,0,0,255,254,255,0,255,254,255,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,102,77,3,0];
+		PEN X.ActualPosition (Color := 16#0000_4080,
+		                      Visible := 0,
+		                      Width := 1,
+		                      Type := Analog,
+		                      Style := 0,
+		                      Marker := 0,
+		                      Min := -5.0,
+		                      Max := 15.0)
+		END_PEN
+
+		PEN Y.ActualPosition (Color := 16#00ff_0000,
+		                      Visible := 1,
+		                      Width := 1,
+		                      Type := Analog,
+		                      Style := 0,
+		                      Marker := 0,
+		                      Min := -5.0,
+		                      Max := 15.0)
+		END_PEN
+
+	END_TREND
+
+CONFIG ASCII(XONXOFFEnable := 0,
+	             DeleteMode := 0,
+	             EchoMode := 0,
+	             TerminationChars := 65293,
+	             AppendChars := 2573,
+	             BufferSize := 82) END_CONFIG
+
+CONFIG ControllerDevice END_CONFIG
+
+CONFIG CST(SystemTimeMasterID := 1) END_CONFIG
+
+CONFIG DF1(DuplicateDetection := 1,
+	           ErrorDetection := BCC Error,
+	           EmbeddedResponseEnable := 0,
+	           DF1Mode := Pt to Pt,
+	           ACKTimeout := 50,
+	           NAKReceiveLimit := 3,
+	           ENQTransmitLimit := 3,
+	           TransmitRetries := 3,
+	           StationAddress := 0,
+	           ReplyMessageWait := 5,
+	           PollingMode := 1,
+	           MasterMessageTransmit := 0,
+	           NormalPollNodeFile := "<NA>",
+	           NormalPollGroupSize := 0,
+	           PriorityPollNodeFile := "<NA>",
+	           ActiveStationFile := "<NA>",
+	           SlavePollTimeout := 3000,
+	           EOTSuppression := 0,
+	           MaxStationAddress := 31,
+	           TokenHoldFactor := 1,
+	           EnableStoreFwd := 0,
+	           StoreFwdFile := "<NA>") END_CONFIG
+
+CONFIG ExtendedDevice END_CONFIG
+
+CONFIG FaultLog END_CONFIG
+
+CONFIG FileManager END_CONFIG
+
+CONFIG ICP END_CONFIG
+
+CONFIG PCCC END_CONFIG
+
+CONFIG Redundancy END_CONFIG
+
+CONFIG SerialPort(BaudRate := 19200,
+	                  Parity := No Parity,
+	                  DataBits := 8 Bits of Data,
+	                  StopBits := 1 Stop Bit,
+	                  ComDriverId := DF1,
+	                  PendingComDriverId := DF1,
+	                  RTSOffDelay := 0,
+	                  RTSSendDelay := 0,
+	                  ControlLine := No Handshake,
+	                  PendingControlLine := No Handshake,
+	                  RemoteModeChangeFlag := 0,
+	                  PendingRemoteModeChangeFlag := 0,
+	                  ModeChangeAttentionChar := 27,
+	                  PendingModeChangeAttentionChar := 27,
+	                  SystemModeCharacter := 83,
+	                  PendingSystemModeCharacter := 83,
+	                  UserModeCharacter := 85,
+	                  PendingUserModeCharacter := 85,
+	                  DCDWaitDelay := 0) END_CONFIG
+
+CONFIG TimeSynchronize(Priority1 := 128,
+	                                 Priority2 := 128,
+	                                 PTPEnable := 1) END_CONFIG
+
+CONFIG UserMemory END_CONFIG
+
+CONFIG WallClockTime(LocalTimeAdjustment := 0,
+	                     TimeZone := 0) END_CONFIG
+
+END_CONTROLLER
+
