@@ -3,7 +3,7 @@
   Import-Export
   Version   := RSLogix 5000 v19.01
   Owner     := Microsoft, Microsoft
-  Exported  := Mon Mar 06 13:45:03 2017
+  Exported  := Mon Mar 06 13:45:24 2017
 
   Note:  File encoded in UTF-8.  Only edit file in a program 
          which supports UTF-8 (like Notepad, not Wordpad).
@@ -385,11 +385,6 @@ CONTROLLER Kinematics_Cartesian_Rotate_Translate (Description := "Sample for Rot
 					    "       will stop when Angle=360deg$N"
 					    "=============================";
 					N: XIC(done_Pass)XIC(MCT_oFF)ONS(seq9)ADD(pass_count,1,pass_count)[OTU(Go_ToStartPosition) OTU(at_StartPosition) ,OTU(Transform_Start_with_Orientation) ,OTU(Begin_Application) ,OTU(Shape_active) ,OTU(Transform_Stop1) OTU(MCT_oFF) ,OTU(done_Pass) ];
-					RC: "Monitor Status [via an AFI rung]$N"
-					    "===========================";
-					N: AFI()XIC(Go_ToStartPosition)XIC(at_StartPosition)XIC(mct1.IP)XIC(Active_motion)MOV(orient[2],save_Orient)NOP();
-					N: OTU(do_via_Auto);
-					N: XIC(run_automatically)OTL(do_via_Auto);
 			END_ROUTINE
 
 			ST_ROUTINE a_ReadMe 
